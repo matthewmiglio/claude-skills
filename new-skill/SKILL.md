@@ -17,9 +17,6 @@ allowed-tools:
 
 Scaffold a new Claude Code skill from a description.
 
-## Reference
-!`cat docs/skill-authoring.md`
-
 ## Existing Skills
 !`ls .claude/skills/`
 
