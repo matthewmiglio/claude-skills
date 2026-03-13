@@ -18,7 +18,9 @@ allowed-tools:
 
 # Commit Monorepo Skill
 
-Build all Next.js workspaces in a monorepo, fix build errors in parallel, then commit and push.
+Validate Next.js workspaces in a monorepo by building them in parallel, fix build errors, then commit and push ALL changes across the entire repo (including non-Next.js code like Python, config, etc.).
+
+Only Next.js subprojects are build-gated. Everything else is committed as-is.
 
 ## Process
 
@@ -30,7 +32,7 @@ Find all Next.js subprojects in the repo:
 find . -name "next.config.*" -not -path "*/node_modules/*" -not -path "*/.next/*"
 ```
 
-For each match, the workspace root is the directory containing the next.config file.
+For each match, the workspace root is the directory containing the next.config file. If no Next.js workspaces are found, skip straight to the commit step.
 
 ### 2. Build All Workspaces in Parallel
 
@@ -64,7 +66,7 @@ If any workspace failed to build after 10 attempts, report the failures to the u
 
 ### 4. Commit and Push
 
-Once all workspaces pass:
+Once all Next.js workspaces pass (or there are none), commit **everything** in the repo that has changed — Next.js code, Python code, config files, training scripts, whatever.
 
 1. Run `git status` and `git diff` to understand all changes.
 2. Run `git log --oneline -5` to match the repo's commit message style.
@@ -85,7 +87,7 @@ git push
 ### 5. Report
 
 Tell the user:
-- Which workspaces were found and built
+- Which Next.js workspaces were found and built (if any)
 - Whether each build succeeded
 - What errors were fixed (if any)
 - The commit message used
