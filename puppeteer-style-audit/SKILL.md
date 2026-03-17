@@ -59,7 +59,7 @@ Detect the framework and start the appropriate dev server in background.
 2. If `package.json` exists and `node_modules/` does not, run `npm install` first.
 3. Start the server in background using Bash `run_in_background`.
 4. Wait up to 30 seconds for the server, polling with `curl -s -o /dev/null -w "%{http_code}" http://localhost:<PORT>/` every 2 seconds.
-5. Record the PID and port for cleanup.
+5. **Record the port number** — you will need it in Step 5 to kill the server. Store it as `DEV_PORT`.
 6. If startup fails after 30s, report the error and stop.
 
 Set `BASE_URL=http://localhost:<PORT>`.
@@ -243,9 +243,9 @@ Merge visual observations from the screenshot with automated JS issues. Note whi
 
 ### Step 5 — Kill Dev Server
 
-If a dev server was started in Step 2, kill it:
-- Windows: `taskkill //F //PID <PID>`
-- Unix: `kill <PID>`
+If a dev server was started in Step 2, kill it **by port** using `npx kill-port <DEV_PORT>` (the port recorded in Step 2).
+
+**CRITICAL: NEVER run `taskkill //F //IM node.exe`, `pkill node`, `killall node`, or any command that kills all Node.js processes.** Claude Code itself runs on Node.js — blanket-killing node processes will kill this session. Always kill by the specific port the dev server is running on.
 
 ### Step 6 — Present Report
 
