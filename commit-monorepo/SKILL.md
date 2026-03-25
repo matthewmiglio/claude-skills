@@ -39,7 +39,8 @@ For each match, the workspace root is the directory containing the next.config f
 Spawn one **Agent subagent** per workspace. Each subagent should:
 
 1. `cd` into the workspace directory
-2. Run `npm run build`
+2. Run `npm audit fix --force` to ensure dependencies are clean
+3. Run `npm run build`
 3. If the build fails, analyze the error output and fix **obvious** build errors:
    - TypeScript type errors
    - Missing imports / unused imports
