@@ -33,10 +33,10 @@ pip install fpdf2 markdown -q 2>&1 | tail -1
 Write the following Python script to a temp file next to the input markdown. Name it `_md_to_pdf_temp.py`.
 
 The script must handle:
-- **H1, H2, H3 headers** with bold fonts and underlines
+- **H1, H2, H3, H4 headers** with bold fonts and underlines (check longest prefix `####` first to avoid false matches)
 - **Tables** with bordered cells, shaded header rows, and word-wrapped content
 - **Fenced code blocks** (```) with monospace font, grey background, and word-wrapped lines
-- **Ordered and unordered lists** with indentation
+- **Ordered and unordered lists** with indentation (including nested/indented items — detect indent level and offset x-position, clamped to prevent overflow)
 - **Checkbox items** (`- [ ]` and `- [x]`)
 - **Horizontal rules** (`---`)
 - **Inline markdown stripping** (bold, italic, code, links → plain text)
@@ -183,49 +183,63 @@ def convert(input_path, output_path):
             pdf.ln(3)
             continue
 
-        clean = strip_inline_md(stripped)
+        indent_match = re.match(r"^(\s+)", stripped)
+        indent_level = len(indent_match.group(1)) // 2 if indent_match else 0
+        stripped_clean = stripped.lstrip()
+        clean = strip_inline_md(stripped_clean)
 
-        # Headers
-        if stripped.startswith("# "):
-            pdf.set_font("Body", "B", 20)
-            pdf.multi_cell(0, 9, clean[2:])
-            pdf.set_draw_color(50, 50, 50)
-            pdf.line(10, pdf.get_y(), pdf.w - 10, pdf.get_y())
-            pdf.ln(4)
-        elif stripped.startswith("## "):
+        # Headers (check longest prefix first to avoid false matches)
+        if stripped_clean.startswith("#### ") and indent_level == 0:
+            pdf.ln(1)
+            pdf.set_font("Body", "B", 11)
+            pdf.multi_cell(0, 6, clean[5:])
+            pdf.ln(1)
+        elif stripped_clean.startswith("### ") and indent_level == 0:
+            pdf.ln(1)
+            pdf.set_font("Body", "B", 13)
+            pdf.multi_cell(0, 7, clean[4:])
+            pdf.ln(2)
+        elif stripped_clean.startswith("## ") and indent_level == 0:
             pdf.ln(2)
             pdf.set_font("Body", "B", 16)
             pdf.multi_cell(0, 8, clean[3:])
             pdf.set_draw_color(180, 180, 180)
             pdf.line(10, pdf.get_y(), pdf.w - 10, pdf.get_y())
             pdf.ln(3)
-        elif stripped.startswith("### "):
-            pdf.ln(1)
-            pdf.set_font("Body", "B", 13)
-            pdf.multi_cell(0, 7, clean[4:])
-            pdf.ln(2)
+        elif stripped_clean.startswith("# ") and indent_level == 0:
+            pdf.set_font("Body", "B", 20)
+            pdf.multi_cell(0, 9, clean[2:])
+            pdf.set_draw_color(50, 50, 50)
+            pdf.line(10, pdf.get_y(), pdf.w - 10, pdf.get_y())
+            pdf.ln(4)
         # Checkbox items (must check before regular list items)
-        elif stripped.startswith("- [ ]") or stripped.startswith("- [x]"):
+        elif stripped_clean.startswith("- [ ]") or stripped_clean.startswith("- [x]"):
             pdf.set_font("Body", "", 11)
-            checked = stripped.startswith("- [x]")
+            checked = stripped_clean.startswith("- [x]")
             marker = "[x] " if checked else "[ ] "
-            text = strip_inline_md(stripped[6:])
-            pdf.set_x(14)
-            pdf.multi_cell(pdf.w - 28, 6, marker + text)
-        # List items
-        elif stripped.startswith("- ") or re.match(r"^\d+\.\s", stripped):
+            text = strip_inline_md(stripped_clean[6:])
+            x_pos = 14 + indent_level * 6
+            pdf.set_x(x_pos)
+            pdf.multi_cell(pdf.w - x_pos - 10, 6, marker + text)
+        # List items (including indented ones)
+        elif stripped_clean.startswith("- ") or re.match(r"^\d+\.\s", stripped_clean):
             pdf.set_font("Body", "", 11)
-            if stripped.startswith("- "):
+            if stripped_clean.startswith("- "):
                 bullet = "- "
             else:
-                bullet = re.match(r"^(\d+\.\s)", stripped).group(1)
-            text = clean[len(bullet):]
-            pdf.set_x(14)
-            pdf.multi_cell(pdf.w - 28, 6, bullet + text)
+                bullet = re.match(r"^(\d+\.\s)", stripped_clean).group(1)
+            text = strip_inline_md(stripped_clean[len(bullet):])
+            x_pos = 14 + indent_level * 6
+            x_pos = min(x_pos, pdf.w - 40)  # clamp to prevent overflow
+            pdf.set_x(x_pos)
+            pdf.multi_cell(pdf.w - x_pos - 10, 6, bullet + text)
         # Normal text
         else:
             pdf.set_font("Body", "", 11)
-            pdf.multi_cell(0, 6, clean)
+            pdf.set_x(10)
+            text = strip_inline_md(stripped_clean)
+            if text:
+                pdf.multi_cell(pdf.w - 20, 6, text)
 
     # Flush remaining
     if in_table:
